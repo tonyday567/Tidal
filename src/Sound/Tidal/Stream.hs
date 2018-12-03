@@ -107,7 +107,7 @@ onTick cMapMV pMV target u tempoMV st =
          -- If there is already cps in the event, the union will preserve that.
          addCps e = (\v -> (Map.union v $ Map.fromList [("cps", (VF cpsNow)),
                                                         ("delta", VF (delta e)),
-                                                        ("cycle", VF (fromRational $ fst $ eventWhole e))
+                                                        ("cycle", VF (fromTime $ fst $ eventWhole e))
                                                        ]
                            )) <$> e
          toMessage e = O.Message (oPath target) $ oPreamble target ++ toData (addCps e)
@@ -127,8 +127,8 @@ onTick cMapMV pMV target u tempoMV st =
 send :: O.Transport t => OSCTarget -> t -> (Double, O.Message) -> IO ()
 send target u (time, m) = O.sendOSC u $ O.Bundle (time + (oLatency target)) [m]
 
-sched :: T.Tempo -> Rational -> Double
-sched tempo c = ((fromRational $ c - (T.atCycle tempo)) / T.cps tempo) + (T.atTime tempo)
+sched :: T.Tempo -> Time -> Double
+sched tempo (Time c) = ((fromRational $ c - (T.atCycle tempo)) / T.cps tempo) + (T.atTime tempo)
 
 -- Interaction
 

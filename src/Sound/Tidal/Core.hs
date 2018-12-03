@@ -25,7 +25,7 @@ sig f = Pattern Analog q
 -- | @sine@ returns a 'Pattern' of continuous 'Fractional' values following a
 -- sinewave with frequency of one cycle, and amplitude from 0 to 1.
 sine :: Fractional a => Pattern a
-sine = sig $ \t -> ((sin_rat $ (pi :: Double) * 2 * (fromRational t)) + 1) / 2
+sine = sig $ \(Time t) -> ((sin_rat $ (pi :: Double) * 2 * (fromRational t)) + 1) / 2
   where sin_rat = fromRational . toRational . sin
 
 -- | @cosine@ is a synonym for @0.25 ~> sine@.
@@ -34,7 +34,7 @@ cosine = 0.25 `rotR` sine
 
 -- | @saw@ is the equivalent of 'sine' for (ascending) sawtooth waves.
 saw :: (Fractional a, Real a) => Pattern a
-saw = sig $ \t -> mod' (fromRational t) 1
+saw = sig $ \(Time t) -> mod' (fromRational t) 1
 
 -- | @isaw@ is the equivalent of 'sine' for inverse (descending) sawtooth waves.
 isaw :: (Fractional a, Real a) => Pattern a
@@ -47,7 +47,7 @@ tri = append saw (rev saw)
 -- | @square@ is the equivalent of 'sine' for square waves.
 square :: (Fractional a, Real a) => Pattern a
 square = sig $
-         \t -> fromIntegral $ ((floor $ (mod' (fromRational t :: Double) 1) * 2) :: Integer)
+         \(Time t) -> fromIntegral $ ((floor $ (mod' (fromRational t :: Double) 1) * 2) :: Integer)
 
 -- | @envL@ is a 'Pattern' of continuous 'Double' values, representing
 -- a linear interpolation between 0 and 1 during the first cycle, then
@@ -55,7 +55,7 @@ square = sig $
 -- useful if you're using something like the retrig function defined
 -- in tidal.el.
 envL :: Pattern Double
-envL = sig $ \t -> max 0 $ min (fromRational t) 1
+envL = sig $ \(Time t) -> max 0 $ min (fromRational t) 1
 
 -- | like 'envL' but reversed.
 envLR :: Pattern Double
@@ -63,11 +63,11 @@ envLR = (1-) <$> envL
 
 -- | 'Equal power' version of 'env', for gain-based transitions
 envEq :: Pattern Double
-envEq = sig $ \t -> sqrt (sin (pi/2 * (max 0 $ min (fromRational (1-t)) 1)))
+envEq = sig $ \(Time t) -> sqrt (sin (pi/2 * (max 0 $ min (fromRational (1-t)) 1)))
 
 -- | Equal power reversed
 envEqR :: Pattern Double
-envEqR = sig $ \t -> sqrt (cos (pi/2 * (max 0 $ min (fromRational (1-t)) 1)))
+envEqR = sig $ \(Time t) -> sqrt (cos (pi/2 * (max 0 $ min (fromRational (1-t)) 1)))
 
 -- ** Pattern algebra
 

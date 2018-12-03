@@ -31,7 +31,7 @@ data State = State {ticks   :: Int,
 setCps :: MVar Tempo -> O.Time -> IO (Tempo)
 setCps tempoMV newCps = do t <- O.time
                            tempo <- takeMVar tempoMV
-                           let c = timeToCycles tempo t
+                           let (P.Time c) = timeToCycles tempo t
                                tempo' = tempo {atTime = t,
                                                atCycle = c,
                                                cps = newCps
@@ -58,8 +58,8 @@ getClockPort =
 
 -- | Returns the given time in terms of
 -- cycles relative to metrical grid of a given Tempo
-timeToCycles :: Tempo -> O.Time -> Rational
-timeToCycles tempo t = (atCycle tempo) + (toRational cycleDelta)
+timeToCycles :: Tempo -> O.Time -> P.Time
+timeToCycles tempo t = P.Time $ (atCycle tempo) + (toRational cycleDelta)
   where delta = t - (atTime tempo)
         cycleDelta = (realToFrac $ cps tempo) * delta
 

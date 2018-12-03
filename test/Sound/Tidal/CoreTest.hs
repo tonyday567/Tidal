@@ -52,8 +52,8 @@ run =
           queryArc (fastCat [pure "a", pure "b"]) (0,0)
             `shouldBe` [(((0,0.5), (0,0)), "a" :: String)]
         it "1/3" $
-          queryArc (fastCat [pure "a", pure "b"]) (1%3,1%3)
-            `shouldBe` [(((0,0.5), (1%3,1%3)), "a" :: String)]
+          queryArc (fastCat [pure "a", pure "b"]) (toTime $ 1%3, toTime $ 1%3)
+            `shouldBe` [(((0,0.5), (toTime $ 1%3, toTime $ 1%3)), "a" :: String)]
 
     describe "rev" $ do
       it "mirrors events" $ do

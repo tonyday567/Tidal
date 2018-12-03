@@ -321,7 +321,7 @@ instance Pattern' Time where
   transformationWithoutArgs = patternTransformationWithoutArgs
   transformationWithArgs = patternTransformationWithArgs
   literal = choice [
-    toRational <$> double,
+    T.toTime <$> double,
     fromIntegral <$> integer
     ]
 

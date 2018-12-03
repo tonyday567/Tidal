@@ -40,15 +40,15 @@ run =
           queryArc (pure "a") (0,0)
             `shouldBe` [(((0,1), (0,0)), "a" :: String)]
         it "1/3" $
-          queryArc (pure "a") (1%3,1%3)
-            `shouldBe` [(((0,1), (1%3,1%3)), "a" :: String)]
+          queryArc (pure "a") (toTime $ 1%3, toTime $ 1%3)
+            `shouldBe` [(((0,1), (toTime $ 1%3,toTime $ 1%3)), "a" :: String)]
 
     describe "_fastGap" $ do
       it "copes with cross-cycle queries" $ do
         (queryArc(_fastGap 2 $ fastCat [pure "a", pure "b"]) (0.5,1.5))
           `shouldBe`
-          [(((1 % 1,5 % 4),(1 % 1,5 % 4)),"a" :: String),
-           (((5 % 4,3 % 2),(5 % 4,3 % 2)),"b")
+          [(((toTime $ 1 % 1,toTime $ 5 % 4),(toTime $ 1 % 1,toTime $ 5 % 4)),"a" :: String),
+           (((toTime $ 5 % 4,toTime $ 3 % 2),(toTime $ 5 % 4,toTime $ 3 % 2)),"b")
           ]
       it "does not return events outside of the query" $ do
         (queryArc(_fastGap 2 $ fastCat [pure "a", pure ("b" :: String)]) (0.5,0.9))
@@ -73,10 +73,10 @@ run =
                      ]
         it "two" $
           queryArc ((fastCat [pure (+1), pure (+2), pure (+3)]) <*> (fastCat [pure 7, pure 8])) (0,1)
-          `shouldBe` [(((0 % 1,1 % 3),(0 % 1,1 % 3)),8 :: Int),
-                      (((1 % 3,1 % 2),(1 % 3,1 % 2)),9),
-                      (((1 % 2,2 % 3),(1 % 2,2 % 3)),10),
-                      (((2 % 3,1 % 1),(2 % 3,1 % 1)),11)
+          `shouldBe` [(((toTime $ 0 % 1,toTime $ 1 % 3),(toTime $ 0 % 1,toTime $ 1 % 3)),8 :: Int),
+                      (((toTime $ 1 % 3,toTime $ 1 % 2),(toTime $ 1 % 3,toTime $ 1 % 2)),9),
+                      (((toTime $ 1 % 2,toTime $ 2 % 3),(toTime $ 1 % 2,toTime $ 2 % 3)),10),
+                      (((toTime $ 2 % 3,toTime $ 1 % 1),(toTime $ 2 % 3,toTime $ 1 % 1)),11)
                      ]
       it "obeys pure id <*> v = v" $ do
         let v = (fastCat [fastCat [pure 7, pure 8], pure 9]) :: Pattern Int
@@ -123,7 +123,7 @@ run =
        it "(0,1.1)" $ arcCycles (0,1.1) `shouldBe` [(0,1),(1,1.1)]
        it "(1,2,1)" $ arcCycles (1,2.1) `shouldBe` [(1,2),(2,2.1)]
        it "(3 + (1%3),5.1)" $
-          arcCycles (3 + (1%3),5.1) `shouldBe` [(3+(1%3),4),(4,5),(5,5.1)]
+          arcCycles (3 + (toTime $ 1%3),5.1) `shouldBe` [(3+(toTime $ 1%3),4),(4,5),(5,5.1)]
 
     describe "unwrap" $ do
       it "preserves inner structure" $ do
@@ -145,9 +145,9 @@ run =
             b = fastCat [pure "c", pure "d", pure "e"]
             pp = fastCat [pure a, pure b]
         queryArc (unwrap pp) (0,1)
-          `shouldBe` [(((0 % 1,1 % 2),(0 % 1,1 % 2)),"a" :: String),
-                      (((1 % 2,2 % 3),(1 % 2,2 % 3)),"d"),
-                      (((2 % 3,1 % 1),(2 % 3,1 % 1)),"e")
+          `shouldBe` [(((toTime $ 0 % 1,toTime $ 1 % 2),(toTime $ 0 % 1,toTime $ 1 % 2)),"a" :: String),
+                      (((toTime $ 1 % 2,toTime $ 2 % 3),(toTime $ 1 % 2,toTime $ 2 % 3)),"d"),
+                      (((toTime $ 2 % 3,toTime $ 1 % 1),(toTime $ 2 % 3,toTime $ 1 % 1)),"e")
                      ]
 
     describe "unwrapSqueeze" $ do
@@ -156,11 +156,11 @@ run =
             b = fastCat [pure "c", pure "d", pure "e"]
             pp = fastCat [pure a, pure b]
         queryArc (unwrapSqueeze pp) (0,1)
-          `shouldBe` [(((0 % 1,1 % 4),(0 % 1,1 % 4)),"a" :: String),
-                      (((1 % 4,1 % 2),(1 % 4,1 % 2)),"b"),
-                      (((1 % 2,2 % 3),(1 % 2,2 % 3)),"c"),
-                      (((2 % 3,5 % 6),(2 % 3,5 % 6)),"d"),
-                      (((5 % 6,1 % 1),(5 % 6,1 % 1)),"e")
+          `shouldBe` [(((toTime $ 0 % 1,toTime $ 1 % 4),(toTime $ 0 % 1,toTime $ 1 % 4)),"a" :: String),
+                      (((toTime $ 1 % 4,toTime $ 1 % 2),(toTime $ 1 % 4,toTime $ 1 % 2)),"b"),
+                      (((toTime $ 1 % 2,toTime $ 2 % 3),(toTime $ 1 % 2,toTime $ 2 % 3)),"c"),
+                      (((toTime $ 2 % 3,toTime $ 5 % 6),(toTime $ 2 % 3,toTime $ 5 % 6)),"d"),
+                      (((toTime $ 5 % 6,toTime $ 1 % 1),(toTime $ 5 % 6,toTime $ 1 % 1)),"e")
                      ]
 
     describe ">>=" $ do
@@ -205,7 +205,7 @@ run =
     describe "controlI" $ do
       it "can retrieve values from state" $
        (query (pure 3 + cF_ "hello") $ State (0,1) (Map.singleton "hello" (VF 0.5)))
-       `shouldBe` [(((0 % 1,1 % 1),(0 % 1,1 % 1)),3.5)]
+       `shouldBe` [(((toTime $ 0 % 1,toTime $ 1 % 1),(toTime $ 0 % 1,toTime $ 1 % 1)),3.5)]
 
     -- pending "Sound.Tidal.Pattern.eventL" $ do
     --  it "succeeds if the first event 'whole' is shorter" $ do

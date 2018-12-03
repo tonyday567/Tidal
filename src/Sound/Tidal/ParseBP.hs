@@ -66,7 +66,7 @@ toPat = \case
    TPat_DegradeBy amt x -> _degradeBy amt $ toPat x
    TPat_Silence -> silence
    TPat_Cat xs -> fastcat $ map toPat xs
-   TPat_TimeCat xs -> timeCat $ map (\(n, pat) -> (toRational n, toPat pat)) $ durations xs
+   TPat_TimeCat xs -> timeCat $ map (\(n, pat) -> (toTime n, toPat pat)) $ durations xs
    TPat_Overlay x0 x1 -> overlay (toPat x0) (toPat x1)
    TPat_Stack xs -> stack $ map toPat xs
    TPat_ShiftL t x -> t `rotL` toPat x
@@ -140,6 +140,14 @@ instance Parseable Rational where
 instance Enumerable Rational where
   fromTo a b = enumFromTo' a b
   fromThenTo a b c = enumFromThenTo' a b c
+
+instance Parseable Time where
+  tPatParser = pTime
+instance Enumerable Time where
+  fromTo a b = enumFromTo' a b
+  fromThenTo a b c = enumFromThenTo' a b c
+
+
 
 enumFromTo' :: (Ord a, Enum a) => a -> a -> Pattern a
 enumFromTo' a b | a > b = fastFromList $ reverse $ enumFromTo b a
@@ -382,12 +390,12 @@ pColour = do name <- many1 letter <?> "colour name"
 pMult :: Parseable a => TPat a -> Parser (TPat a)
 pMult thing = do char '*'
                  spaces
-                 r <- (pRational <|> pPolyIn pRational  <|> pPolyOut pRational)
+                 r <- (pTime <|> pPolyIn pTime  <|> pPolyOut pTime)
                  return $ TPat_Density r thing
               <|>
               do char '/'
                  spaces
-                 r <- (pRational <|> pPolyIn pRational  <|> pPolyOut pRational)
+                 r <- (pTime <|> pPolyIn pTime  <|> pPolyOut pTime)
                  return $ TPat_Slow r thing
               <|>
               return thing
@@ -433,7 +441,7 @@ pStretch :: Parseable a => TPat a -> Parser [TPat a]
 pStretch thing =
   do char '@'
      n <- ((read <$> many1 digit) <|> return 1)
-     return $ map (\x -> TPat_Zoom (x%n,(x+1)%n) thing) [0 .. (n-1)]
+     return $ map (\x -> TPat_Zoom (toTime $ x%n,toTime $ (x+1)%n) thing) [0 .. (n-1)]
 
 pRatio :: Parser (Rational)
 pRatio = do s <- sign
@@ -451,9 +459,15 @@ pRatio = do s <- sign
                       return (n%1)
             return $ applySign s result
 
+
 pRational :: Parser (TPat Rational)
 pRational = do r <- pRatio
                return $ TPat_Atom r
+
+pTime :: Parser (TPat Time)
+pTime = do r <- (fmap toTime pRatio)
+           return $ TPat_Atom r
+
 
 {-
 pDensity :: Parser (Rational)

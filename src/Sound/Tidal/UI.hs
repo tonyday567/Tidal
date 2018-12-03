@@ -247,7 +247,7 @@ d1 $ sound (brak "bd sn kurt")
 @
 -}
 brak :: Pattern a -> Pattern a
-brak = when ((== 1) . (`mod` 2)) (((1%4) `rotR`) . (\x -> fastcat [x, silence]))
+brak = when ((== 1) . (`mod` 2)) (((Time $ 1%4) `rotR`) . (\x -> fastcat [x, silence]))
 
 {- | Divides a pattern into a given number of subdivisions, plays the subdivisions
 in order, but increments the starting subdivision each cycle. The pattern
@@ -275,7 +275,7 @@ iter :: Pattern Int -> Pattern c -> Pattern c
 iter = tParam _iter
 
 _iter :: Int -> Pattern a -> Pattern a
-_iter n p = slowcat $ map (\i -> ((fromIntegral i)%(fromIntegral n)) `rotL` p) [0 .. (n-1)]
+_iter n p = slowcat $ map (\i -> (Time $ (fromIntegral i)%(fromIntegral n)) `rotL` p) [0 .. (n-1)]
 
 -- | @iter'@ is the same as @iter@, but decrements the starting
 -- subdivision instead of incrementing it.
@@ -283,7 +283,7 @@ iter' :: Pattern Int -> Pattern c -> Pattern c
 iter' = tParam _iter'
 
 _iter' :: Int -> Pattern a -> Pattern a
-_iter' n p = slowcat $ map (\i -> ((fromIntegral i)%(fromIntegral n)) `rotR` p) [0 .. (n-1)]
+_iter' n p = slowcat $ map (\i -> (Time $ (fromIntegral i)%(fromIntegral n)) `rotR` p) [0 .. (n-1)]
 
 -- | @palindrome p@ applies @rev@ to @p@ every other cycle, so that
 -- the pattern alternates between forwards and backwards.
@@ -631,7 +631,7 @@ eulerOff :: Pattern Int -> Pattern Int -> Pattern Integer -> Pattern a -> Patter
 eulerOff = tParam3 _eulerOff
 
 _eulerOff :: Int -> Int -> Integer -> Pattern a -> Pattern a
-_eulerOff n k s p = ((s%(fromIntegral k)) `rotL`) (_euler n k p)
+_eulerOff n k s p = ((Time $ s%(fromIntegral k)) `rotL`) (_euler n k p)
 
 distrib :: [Pattern Int] -> Pattern a -> Pattern a
 distrib ps p = do p' <- sequence ps
@@ -665,7 +665,7 @@ eulerFull :: Pattern Int -> Pattern Int -> Pattern a -> Pattern a -> Pattern a
 eulerFull n k pa pb = stack [ euler n k pa, eulerInv n k pb ]
 
 index :: Real b => b -> Pattern b -> Pattern c -> Pattern c
-index sz indexpat pat = spread' (zoom' $ toRational sz) (toRational . (*(1-sz)) <$> indexpat) pat
+index sz indexpat pat = spread' (zoom' $ toTime sz) (toTime . (*(1-sz)) <$> indexpat) pat
   where zoom' tSz start = zoom (start, start+tSz)
 
 {-
@@ -805,7 +805,7 @@ discretise = segment
 -- | @randcat ps@: does a @slowcat@ on the list of patterns @ps@ but
 -- randomises the order in which they are played.
 randcat :: [Pattern a] -> Pattern a
-randcat ps = spread' (rotL) (_segment 1 $ ((%1) . fromIntegral) <$> (irand (length ps) :: Pattern Int)) (slowcat ps)
+randcat ps = spread' (rotL) (fmap toTime $ _segment 1 $ ((%1) . fromIntegral) <$> (irand (length ps) :: Pattern Int)) (slowcat ps)
 
 -- @fromNote p@: converts a pattern of human-readable pitch names
 -- into pitch numbers. For example, @"cs2"@ will be parsed as C Sharp
@@ -877,8 +877,8 @@ substruct s p = p {query = f}
 
 randArcs :: Int -> Pattern [Arc]
 randArcs n =
-  do rs <- mapM (\x -> (pure $ (toRational x)/(toRational n)) <~ choose [1 :: Int,2,3]) [0 .. (n-1)]
-     let rats = map toRational rs
+  do rs <- mapM (\x -> (pure $ (toTime x)/(toTime n)) <~ choose [1 :: Int,2,3]) [0 .. (n-1)]
+     let rats = map toTime rs
          total = sum rats
          pairs = pairUp $ accumulate $ map ((/total)) rats
      return $ pairs
@@ -902,7 +902,7 @@ randStruct n = splitQueries $ Pattern {nature = Digital, query = f}
 
 -- TODO - what does this do?
 substruct' :: Pattern Int -> Pattern a -> Pattern a
-substruct' s p = p {query = \st -> concatMap (\((a', _), i) -> queryArc (compressTo a' (inside (pure $ 1/toRational(length (queryArc s (sam (fst $ arc st), nextSam (fst $ arc st))))) (rotR (toRational i)) p)) a') (query s st)}
+substruct' s p = p {query = \st -> concatMap (\((a', _), i) -> queryArc (compressTo a' (inside (pure $ 1/toTime(length (queryArc s (sam (fst $ arc st), nextSam (fst $ arc st))))) (rotR (toTime i)) p)) a') (query s st)}
 
 -- | @stripe n p@: repeats pattern @p@, @n@ times per cycle. So
 -- similar to @fast@, but with random durations. The repetitions will
@@ -920,7 +920,7 @@ _stripe = substruct' . randStruct
 -- is exactly one cycle, and every @n@th stripe starts on a cycle
 -- boundary (in indian classical terms, the @sam@).
 slowstripe :: Pattern Int -> Pattern a -> Pattern a
-slowstripe n = slow (toRational <$> n) . stripe n
+slowstripe n = slow (toTime <$> n) . stripe n
 
 -- Lindenmayer patterns, these go well with the step sequencer
 -- general rule parser (strings map to strings)
@@ -1036,7 +1036,7 @@ d1 $ chunk 4 (density 4) $ sound "cp sn arpy [mt lt]"
 @
 -}
 chunk :: Integer -> (Pattern b -> Pattern b) -> Pattern b -> Pattern b
-chunk n f p = cat [within (i%(fromIntegral n),(i+1)%(fromIntegral n)) f p | i <- [0..n-1]]
+chunk n f p = cat [within (toTime $ i%(fromIntegral n),toTime $ (i+1)%(fromIntegral n)) f p | i <- [0..n-1]]
 
 {-
 chunk n f p = do i <- _slow (toRational n) $ run (fromIntegral n)
@@ -1050,8 +1050,8 @@ runWith = chunk
 {-| @chunk'@ works much the same as `chunk`, but runs from right to left.
 -}
 chunk' :: Integral a => a -> (Pattern b -> Pattern b) -> Pattern b -> Pattern b
-chunk' n f p = do i <- _slow (toRational n) $ rev $ run (fromIntegral n)
-                  within (i%(fromIntegral n),(i+)1%(fromIntegral n)) f p
+chunk' n f p = do i <- _slow (toTime n) $ rev $ run (fromIntegral n)
+                  within (toTime $ i%(fromIntegral n),toTime $ (i+)1%(fromIntegral n)) f p
 
 -- deprecated (renamed to chunk')
 runWith' :: Integral a => a -> (Pattern b -> Pattern b) -> Pattern b -> Pattern b
@@ -1100,7 +1100,7 @@ swingBy :: Pattern Time -> Pattern Time -> Pattern a -> Pattern a
 swingBy x n = inside n (within (0.5,1) (x ~>))
 
 swing :: Pattern Time -> Pattern a -> Pattern a
-swing = swingBy (pure $ 1%3)
+swing = swingBy (pure $ toTime $ 1%3)
 
 {- | `cycleChoose` is like `choose` but only picks a new item from the list
 once each cycle -}
@@ -1155,7 +1155,7 @@ inhabit ps p = unwrap' $ (\s -> fromMaybe silence $ lookup s ps) <$> p
 
 {- | @spaceOut xs p@ repeats a pattern @p@ at different durations given by the list of time values in @xs@ -}
 spaceOut :: [Time] -> Pattern a -> Pattern a
-spaceOut xs p = _slow (toRational $ sum xs) $ stack $ map (\a -> compress a p) $ spaceArcs
+spaceOut xs p = _slow (toTime $ sum xs) $ stack $ map (\a -> compress a p) $ spaceArcs
   where markOut :: Time -> [Time] -> [(Time, Time)]
         markOut _ [] = []
         markOut offset (x:xs') = (offset,offset+x):(markOut (offset+x) xs')
@@ -1349,7 +1349,7 @@ spreadf = spread ($)
 
 stackwith :: Unionable a => Pattern a -> [Pattern a] -> Pattern a
 stackwith p ps | null ps = silence
-               | otherwise = stack $ map (\(i, p') -> p' # (((fromIntegral i) % l) `rotL` p)) (zip [0::Int ..] ps)
+               | otherwise = stack $ map (\(i, p') -> p' # ((toTime $ (fromIntegral i) % l) `rotL` p)) (zip [0::Int ..] ps)
   where l = fromIntegral $ length ps
 
 {-
@@ -1429,11 +1429,11 @@ tabby n p p' = stack [maskedWarp,
   where
     weft = concatMap (\_ -> [[0..n-1],(reverse [0..n-1])]) [0 .. (n `div` 2) - 1]
     warp = transpose weft
-    thread xs p'' = _slow (n%1) $ fastcat $ map (\i -> zoom (i%n,(i+1)%n) p'') (concat xs)
+    thread xs p'' = _slow (toTime $ n%1) $ fastcat $ map (\i -> zoom (toTime $ i%n,toTime $ (i+1)%n) p'') (concat xs)
     weftP = thread weft p'
     warpP = thread warp p
-    maskedWeft = mask (every 2 rev $ _fast ((n)%2) $ fastCat [silence, pure True]) weftP
-    maskedWarp = mask (every 2 rev $ _fast ((n)%2) $ fastCat [pure True, silence]) warpP
+    maskedWeft = mask (every 2 rev $ _fast (toTime $ (n)%2) $ fastCat [silence, pure True]) weftP
+    maskedWarp = mask (every 2 rev $ _fast (toTime $ (n)%2) $ fastCat [pure True, silence]) warpP
 
 _select :: Double -> [Pattern a] -> Pattern a
 _select f ps =  ps !! (floor $ (max 0 $ min 1 f) * (fromIntegral $ length ps - 1))

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Sound.Tidal.Pattern where
@@ -10,7 +11,7 @@ import           Data.Data (Data) -- toConstr
 import           Data.List (delete, findIndex, sort, intercalate)
 import qualified Data.Map.Strict as Map
 import           Data.Maybe (isJust, fromJust, catMaybes, fromMaybe)
-import           Data.Ratio (numerator, denominator)
+import           Data.Ratio (numerator, denominator, Ratio)
 import           Data.Typeable (Typeable)
 
 import           Sound.Tidal.Utils
@@ -19,10 +20,141 @@ import           Sound.Tidal.Utils
 -- * Types
 
 -- | Time is rational
-type Time = Rational
+newtype Time = Time { untime :: Ratio Integer } deriving (Eq, Ord, Num, Fractional, Real, RealFrac, Enum)
+
+instance {-# OVERLAPPING #-} Show Time where
+  show (Time r)
+    | unit == 0 && frac > 0 = showFrac (numerator frac) (denominator frac)
+    | otherwise =  show unit ++ showFrac (numerator frac) (denominator frac)
+    where unit = floor r :: Int
+          frac = (r - (toRational unit))
+
+showFrac :: Integer -> Integer -> String
+showFrac 0 _ = ""
+showFrac 1 2 = "½"
+showFrac 1 3 = "⅓"
+showFrac 2 3 = "⅔"
+showFrac 1 4 = "¼"
+showFrac 3 4 = "¾"
+showFrac 1 5 = "⅕"
+showFrac 2 5 = "⅖"
+showFrac 3 5 = "⅗"
+showFrac 4 5 = "⅘"
+showFrac 1 6 = "⅙"
+showFrac 5 6 = "⅚"
+showFrac 1 7 = "⅐"
+showFrac 1 8 = "⅛"
+showFrac 3 8 = "⅜"
+showFrac 5 8 = "⅝"
+showFrac 7 8 = "⅞"
+showFrac 1 9 = "⅑"
+showFrac 1 10 = "⅒"
+
+showFrac n d = fromMaybe plain $ do n' <- up n
+                                    d' <- down d
+                                    return $ n' ++ d'
+  where plain = " " ++ show n ++ "/" ++ show d
+        up 1 = Just "¹"
+        up 2 = Just "²"
+        up 3 = Just "³"
+        up 4 = Just "⁴"
+        up 5 = Just "⁵"
+        up 6 = Just "⁶"
+        up 7 = Just "⁷"
+        up 8 = Just "⁸"
+        up 9 = Just "⁹"
+        up 0 = Just "⁰"
+        up _ = Nothing
+        down 1 = Just "₁"
+        down 2 = Just "₂"
+        down 3 = Just "₃"
+        down 4 = Just "₄"
+        down 5 = Just "₅"
+        down 6 = Just "₆"
+        down 7 = Just "₇"
+        down 8 = Just "₈"
+        down 9 = Just "₉"
+        down 0 = Just "₀"
+        down _ = Nothing
+
+-- | The 'sam' (start of cycle) for the given time value
+sam :: Time -> Time
+sam = fromIntegral . (floor :: Time -> Int)
+
+-- | The end point of the current cycle (and starting point of the next cycle)
+nextSam :: Time -> Time
+nextSam = (1+) . sam
+
+-- | The position of a time value relative to the start of its cycle.
+cyclePos :: Time -> Time
+cyclePos t = t - sam t
+
+-- | Turns a number into a (rational) time value.
+toTime :: Real a => a -> Time
+toTime r = Time (toRational r)
+
+-- | Turns a Time into a (fractional) value.
+fromTime :: Fractional a => Time -> a
+fromTime (Time t) = fromRational t
 
 -- | A time arc (start and end)
 type Arc = (Time, Time)
+
+instance {-# OVERLAPPING #-} Show Arc where
+  show (s,e) = show s ++ ">" ++ show e
+
+-- | Map the given function over both the start and end @Time@ values
+-- of the given @Arc@.
+mapArc :: (Time -> Time) -> Arc -> Arc
+mapArc f (s,e) = (f s, f e)
+
+-- | Similar to 'mapArc' but time is relative to the cycle (i.e. the
+-- sam of the start of the arc)
+mapCycle :: (Time -> Time) -> Arc -> Arc
+mapCycle f (s,e) = (sam' + (f $ s - sam'), sam' + (f $ e - sam'))
+         where sam' = sam s
+
+-- | Splits the given 'Arc' into a list of 'Arc's, at cycle boundaries.
+arcCycles :: Arc -> [Arc]
+arcCycles (s,e) | s >= e = []
+                | sam s == sam e = [(s,e)]
+                | otherwise = (s, nextSam s) : (arcCycles (nextSam s, e))
+
+-- | Like arcCycles, but returns zero-width arcs
+arcCyclesZW :: Arc -> [Arc]
+arcCyclesZW (s,e) | s == e = [(s,e)]
+                  | otherwise = arcCycles (s,e)
+
+-- | @subArc i j@ is the timespan that is the intersection of @i@ and @j@.
+-- The definition is a bit fiddly as results might be zero-width, but
+-- not at the end of an non-zero-width arc - e.g. (0,1) and (1,2) do
+-- not intersect, but (1,1) (1,1) does.
+subArc :: Arc -> Arc -> Maybe Arc
+subArc (s, e) (s',e') | and [s'' == e'', s'' == e, s < e] = Nothing
+                      | and [s'' == e'', s'' == e', s' < e'] = Nothing
+                      | s'' <= e'' = Just (s'', e'')
+                      | otherwise = Nothing
+  where s'' = max s s'
+        e'' = min e e'
+
+-- | The arc of the whole cycle that the given time value falls within
+timeToCycleArc :: Time -> Arc
+timeToCycleArc t = (sam t, (sam t) + 1)
+
+-- | A list of cycle numbers which are included in the given arc
+cyclesInArc :: Integral a => Arc -> [a]
+cyclesInArc (s,e) | s > e = []
+                  | s == e = [floor s]
+                  | otherwise = [floor s .. (ceiling e)-1]
+
+-- | A list of arcs of the whole cycles which are included in the given arc
+cycleArcsInArc :: Arc -> [Arc]
+cycleArcsInArc = map (timeToCycleArc . (toTime :: Int -> Time)) . cyclesInArc
+
+-- | @isIn a t@ is @True@ if @t@ is inside
+-- the arc represented by @a@.
+isIn :: Arc -> Time -> Bool
+isIn (s,e) t = t >= s && t < e
 
 -- | The second arc (the part) should be equal to or fit inside the
 -- first one (the whole that it's a part of).
@@ -308,15 +440,12 @@ instance Fractional ControlMap where
   recip        = fmap (applyFIS recip id id)
   fromRational = Map.singleton "speed" . VF . fromRational
 
-instance {-# OVERLAPPING #-} Show Arc where
-  show (s,e) = prettyRat s ++ ">" ++ prettyRat e
-
 instance {-# OVERLAPPING #-} Show Part where
   show ((s,e),(s',e')) = h ++ "(" ++ show (s',e') ++ ")" ++ t
     where h | s == s' = ""
-            | otherwise = prettyRat s ++ "-"
+            | otherwise = show s ++ "-"
           t | e == e' = ""
-            | otherwise = "-" ++ prettyRat e
+            | otherwise = "-" ++ show e
 
 instance {-# OVERLAPPING #-} Show a => Show (Event a) where
   show (p,v) = show p ++ "|" ++ show v
@@ -334,60 +463,6 @@ instance Show Value where
 
 instance {-# OVERLAPPING #-} Show (ControlMap) where
   show m = intercalate ", " $ map (\(name, value) -> name ++ ": " ++ show value) $ Map.toList m
-
-prettyRat :: Rational -> String
-prettyRat r | unit == 0 && frac > 0 = showFrac (numerator frac) (denominator frac)
-            | otherwise =  show unit ++ showFrac (numerator frac) (denominator frac)
-  where unit = floor r :: Int
-        frac = (r - (toRational unit))
-
-showFrac :: Integer -> Integer -> String
-showFrac 0 _ = ""
-showFrac 1 2 = "½"
-showFrac 1 3 = "⅓"
-showFrac 2 3 = "⅔"
-showFrac 1 4 = "¼"
-showFrac 3 4 = "¾"
-showFrac 1 5 = "⅕"
-showFrac 2 5 = "⅖"
-showFrac 3 5 = "⅗"
-showFrac 4 5 = "⅘"
-showFrac 1 6 = "⅙"
-showFrac 5 6 = "⅚"
-showFrac 1 7 = "⅐"
-showFrac 1 8 = "⅛"
-showFrac 3 8 = "⅜"
-showFrac 5 8 = "⅝"
-showFrac 7 8 = "⅞"
-showFrac 1 9 = "⅑"
-showFrac 1 10 = "⅒"
-
-showFrac n d = fromMaybe plain $ do n' <- up n
-                                    d' <- down d
-                                    return $ n' ++ d'
-  where plain = " " ++ show n ++ "/" ++ show d
-        up 1 = Just "¹"
-        up 2 = Just "²"
-        up 3 = Just "³"
-        up 4 = Just "⁴"
-        up 5 = Just "⁵"
-        up 6 = Just "⁶"
-        up 7 = Just "⁷"
-        up 8 = Just "⁸"
-        up 9 = Just "⁹"
-        up 0 = Just "⁰"
-        up _ = Nothing
-        down 1 = Just "₁"
-        down 2 = Just "₂"
-        down 3 = Just "₃"
-        down 4 = Just "₄"
-        down 5 = Just "₅"
-        down 6 = Just "₆"
-        down 7 = Just "₇"
-        down 8 = Just "₈"
-        down 9 = Just "₉"
-        down 0 = Just "₀"
-        down _ = Nothing
 
 ------------------------------------------------------------------------
 -- * Internal functions
@@ -422,28 +497,6 @@ isDigital = (== Digital) . nature
 isAnalog :: Pattern a -> Bool
 isAnalog = not . isDigital
 
--- | Splits the given 'Arc' into a list of 'Arc's, at cycle boundaries.
-arcCycles :: Arc -> [Arc]
-arcCycles (s,e) | s >= e = []
-                | sam s == sam e = [(s,e)]
-                | otherwise = (s, nextSam s) : (arcCycles (nextSam s, e))
-
--- | Like arcCycles, but returns zero-width arcs
-arcCyclesZW :: Arc -> [Arc]
-arcCyclesZW (s,e) | s == e = [(s,e)]
-                  | otherwise = arcCycles (s,e)
-
--- | Map the given function over both the start and end @Time@ values
--- of the given @Arc@.
-mapArc :: (Time -> Time) -> Arc -> Arc
-mapArc f (s,e) = (f s, f e)
-
--- | Similar to 'mapArc' but time is relative to the cycle (i.e. the
--- sam of the start of the arc)
-mapCycle :: (Time -> Time) -> Arc -> Arc
-mapCycle f (s,e) = (sam' + (f $ s - sam'), sam' + (f $ e - sam'))
-         where sam' = sam s
-
 -- | Splits queries that span cycles. For example `query p (0.5, 1.5)` would be
 -- turned into two queries, `(0.5,1)` and `(1,1.5)`, and the results
 -- combined. Being able to assume queries don't span cycles often
@@ -451,56 +504,12 @@ mapCycle f (s,e) = (sam' + (f $ s - sam'), sam' + (f $ e - sam'))
 splitQueries :: Pattern a -> Pattern a
 splitQueries p = p {query = \st -> concatMap (\a -> query p st {arc = a}) $ arcCyclesZW (arc st)}
 
--- | The 'sam' (start of cycle) for the given time value
-sam :: Time -> Time
-sam = fromIntegral . (floor :: Time -> Int)
 
--- | Turns a number into a (rational) time value. An alias for 'toRational'.
-toTime :: Real a => a -> Rational
-toTime = toRational
-
--- | The end point of the current cycle (and starting point of the next cycle)
-nextSam :: Time -> Time
-nextSam = (1+) . sam
-
--- | The position of a time value relative to the start of its cycle.
-cyclePos :: Time -> Time
-cyclePos t = t - sam t
-
--- | @isIn a t@ is @True@ if @t@ is inside
--- the arc represented by @a@.
-isIn :: Arc -> Time -> Bool
-isIn (s,e) t = t >= s && t < e
 
 -- | `True` if an `Event`'s starts is within given `Arc`
 onsetIn :: Arc -> Event a -> Bool
 onsetIn a e = isIn a (eventWholeOnset e)
 
--- | @subArc i j@ is the timespan that is the intersection of @i@ and @j@.
--- The definition is a bit fiddly as results might be zero-width, but
--- not at the end of an non-zero-width arc - e.g. (0,1) and (1,2) do
--- not intersect, but (1,1) (1,1) does.
-subArc :: Arc -> Arc -> Maybe Arc
-subArc (s, e) (s',e') | and [s'' == e'', s'' == e, s < e] = Nothing
-                      | and [s'' == e'', s'' == e', s' < e'] = Nothing
-                      | s'' <= e'' = Just (s'', e'')
-                      | otherwise = Nothing
-  where s'' = max s s'
-        e'' = min e e'
-
--- | The arc of the whole cycle that the given time value falls within
-timeToCycleArc :: Time -> Arc
-timeToCycleArc t = (sam t, (sam t) + 1)
-
--- | A list of cycle numbers which are included in the given arc
-cyclesInArc :: Integral a => Arc -> [a]
-cyclesInArc (s,e) | s > e = []
-                  | s == e = [floor s]
-                  | otherwise = [floor s .. (ceiling e)-1]
-
--- | A list of arcs of the whole cycles which are included in the given arc
-cycleArcsInArc :: Arc -> [Arc]
-cycleArcsInArc = map (timeToCycleArc . (toTime :: Int -> Time)) . cyclesInArc
 
 -- | Apply a function to the arcs/timespans (both whole and parts) of the result
 withResultArc :: (Arc -> Arc) -> Pattern a -> Pattern a
@@ -661,4 +670,3 @@ matchManyToOne f pa pb = pa {query = q}
               ((xWhole, xPart), (or $ map (f x) (as $ fst xWhole), x))
             as s = map snd $ query pa $ fQuery s
             fQuery s = st {arc = (s,s)}
- 

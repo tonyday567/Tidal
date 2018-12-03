@@ -28,9 +28,9 @@ spin = tParam _spin
 
 _spin :: Int -> ControlPattern -> ControlPattern
 _spin copies p =
-  stack $ map (\i -> let offset = toInteger i % toInteger copies in
+  stack $ map (\i -> let offset = toTime $ toInteger i % toInteger copies in
                      offset `rotL` p
-                     # P.pan (pure $ fromRational offset)
+                     # P.pan (pure $ fromTime offset)
               )
           [0 .. (copies - 1)]
 
@@ -171,7 +171,7 @@ gap :: Pattern Int -> ControlPattern -> ControlPattern
 gap = tParam _gap
 
 _gap :: Int -> ControlPattern -> ControlPattern 
-_gap n p = (_fast (toRational n) $ cat [pure 1, silence]) |>| ( _chop n p)
+_gap n p = (_fast (toTime n) $ cat [pure 1, silence]) |>| ( _chop n p)
 
 {- |
 `weave` applies a function smoothly over an array of different patterns. It uses an `OscPattern` to
@@ -193,7 +193,7 @@ d1 $ weave' 3 (sound "bd [sn drum:2*2] bd*2 [sn drum:1]") [density 2, (# speed "
 -}
 weave' :: Rational -> Pattern a -> [Pattern a -> Pattern a] -> Pattern a
 weave' t p fs | l == 0 = silence
-              | otherwise = _slow t $ stack $ map (\(i, f) -> (fromIntegral i % l) `rotL` (_fast t $ f (_slow t p))) (zip [0 :: Int ..] fs)
+              | otherwise = _slow (toTime t) $ stack $ map (\(i, f) -> (toTime $ fromIntegral i % l) `rotL` (_fast (toTime t) $ f (_slow (toTime t) p))) (zip [0 :: Int ..] fs)
   where l = fromIntegral $ length fs
 
 {- |
@@ -265,10 +265,10 @@ d1 $ juxBy 0.6 (|*| speed "2") $ slowspread (loopAt) [4,6,2,3] $ chop 12 $ sound
 @
 -}
 loopAt :: Pattern Time -> ControlPattern -> ControlPattern
-loopAt n p = slow n p |*| P.speed (fromRational <$> (1/n)) # P.unit (pure "c")
+loopAt n p = slow n p |*| P.speed (fromTime <$> (1/n)) # P.unit (pure "c")
 
-hurry :: Pattern Rational -> ControlPattern -> ControlPattern
-hurry x = (|*| P.speed (fromRational <$> x)) . fast x
+hurry :: Pattern Time -> ControlPattern -> ControlPattern
+hurry x = (|*| P.speed (fromTime <$> x)) . fast x
 
 {- | Smash is a combination of `spread` and `striate` - it cuts the samples
 into the given number of bits, and then cuts between playing the loop
@@ -322,11 +322,11 @@ d1 $ stut 4 0.5 (-0.2) $ sound "bd sn"
 @
 -}
 
-stut :: Pattern Integer -> Pattern Double -> Pattern Rational -> ControlPattern -> ControlPattern
+stut :: Pattern Integer -> Pattern Double -> Pattern Time -> ControlPattern -> ControlPattern
 stut = tParam3 _stut
 
-_stut :: Integer -> Double -> Rational -> ControlPattern -> ControlPattern
-_stut count feedback time p = stack (p:(map (\x -> (((x%count)*time) `rotR` (p |*| P.gain (pure $ scalegain (fromIntegral x))))) [1..(count-1)]))
+_stut :: Integer -> Double -> Time -> ControlPattern -> ControlPattern
+_stut count feedback time p = stack (p:(map (\x -> ((toTime $ (x%count)*fromTime time) `rotR` (p |*| P.gain (pure $ scalegain (fromIntegral x))))) [1..(count-1)]))
   where scalegain x
           = ((+feedback) . (*(1-feedback)) . (/(fromIntegral count)) . ((fromIntegral count)-)) x
 
@@ -369,14 +369,14 @@ cF_ :: String -> Pattern Double
 cF_ = _cF []
 
 cT :: Time -> String -> Pattern Time
-cT d = (toRational <$>) . cF (fromRational d)
+cT d = (toTime <$>) . cF (fromTime d)
 cT0 :: String -> Pattern Time
-cT0 = (toRational <$>) . cF0
+cT0 = (toTime <$>) . cF0
 cT_ :: String -> Pattern Time
-cT_ = (toRational <$>) . cF_
+cT_ = (toTime <$>) . cF_
 
 
-cR :: Time -> String -> Pattern Rational
+cR :: Time -> String -> Pattern Time
 cR = cT
 cR0 :: String -> Pattern Time
 cR0 = cT0
