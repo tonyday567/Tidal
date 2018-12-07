@@ -6,6 +6,8 @@ cache:
   directories:
     - $HOME/.cabsnap
     - $HOME/.cabal/packages
+    - $HOME/.stack
+    - $TRAVIS_BUILD_DIR/.stack-work
 
 before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
@@ -13,72 +15,120 @@ before_cache:
 
 matrix:
   include:
-    - env: CABALVER=1.22 GHCVER=7.10.3
+    - env: BUILD=cabal CABALVER=1.22 GHCVER=7.10.3
       compiler: ": #GHC 7.10.3"
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3], sources: [hvr-ghc]}}
-    - env: CABALVER=1.24 GHCVER=8.0.1
+    - env: BUILD=cabal CABALVER=1.24 GHCVER=8.0.1
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1], sources: [hvr-ghc]}}
-    - compiler: "ghc-8.2.2"
+    - env: BUILD=cabal CABALVER=1.24 GHCVER=8.2.2
+      compiler: "ghc-8.2.2"
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-1.24,ghc-8.2.2], sources: [hvr-ghc]}}
-    - compiler: "ghc-8.4.1"
-      # env: TEST=--disable-tests BENCH=--disable-benchmarks
+    - env: BUILD=cabal CABALVER=1.24 GHCVER=8.4.1
+      compiler: "ghc-8.4.1"
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-8.4.1], sources: [hvr-ghc]}}
+    - env: BUILD=stack ARGS=""
+      compiler: ": #stack default"
+      addons: {apt: {packages: [libgmp-dev]}}
+    - env: BUILD=stack ARGS="--resolver nightly"
+      compiler: ": #stack nightly"
+      addons: {apt: {packages: [libgmp-dev]}}
+
+  allow_failures:
+    - env: BUILD=stack ARGS="--resolver nightly"
 
 before_install:
- - unset CC
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+- |
+  case "$BUILD" in
+    cabal)
+      unset CC
+      export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+      ;;
+    stack)
+      export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
+      mkdir -p ~/.local/bin
+      if [ `uname` = "Darwin" ]
+      then
+        travis_retry curl --insecure -L https://get.haskellstack.org/stable/osx-x86_64.tar.gz | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
+      else
+        travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+      fi
+      # Use the more reliable S3 mirror of Hackage
+      mkdir -p $HOME/.cabal
+      echo 'remote-repo: hackage.haskell.org:http://hackage.fpcomplete.com/' > $HOME/.cabal/config
+      echo 'remote-repo-cache: $HOME/.cabal/packages' >> $HOME/.cabal/config
+      ;;
+  esac
 
 install:
- - cabal --version
- - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
- - if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];
-   then
-     zcat $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
-          $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
-   fi
- - travis_retry cabal update -v
- - sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
- - cabal install --only-dependencies --enable-tests --enable-benchmarks --dry -v > installplan.txt
- - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
+ - |
+   case "$BUILD" in
+     cabal)
+       cabal --version
+       echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+       if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];
+         then
+           zcat $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
+                $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
+         fi
+       travis_retry cabal update -v
+       sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
+       cabal install --only-dependencies --enable-tests --enable-benchmarks --dry -v > installplan.txt
+       sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
 
-# check whether current requested install-plan matches cached package-db snapshot
- - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
-   then
-     echo "cabal build-cache HIT";
-     rm -rfv .ghc;
-     cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
-     cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabal/;
-   else
-     echo "cabal build-cache MISS";
-     rm -rf $HOME/.cabsnap;
-     mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-     cabal install --only-dependencies --enable-tests --enable-benchmarks;
-   fi
-
-# snapshot package-db on cache miss
- - if [ ! -d $HOME/.cabsnap ];
-   then
-      echo "snapshotting package-db to build-cache";
-      mkdir $HOME/.cabsnap;
-      cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
-      cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
+       # check whether current requested install-plan matches cached package-db snapshot
+       if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
+         then
+           echo "cabal build-cache HIT";
+           rm -rfv .ghc;
+           cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
+           cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabal/;
+         else
+           echo "cabal build-cache MISS";
+           rm -rf $HOME/.cabsnap;
+           mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
+           cabal install --only-dependencies --enable-tests --enable-benchmarks;
    fi
 
-# Here starts the actual work to be performed for the package under test;
-# any command which exits with a non-zero exit code causes the build to fail.
+    # snapshot package-db on cache miss
+       if [ ! -d $HOME/.cabsnap ];
+         then
+           echo "snapshotting package-db to build-cache";
+           mkdir $HOME/.cabsnap;
+           cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
+           cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
+         fi
+
+      # Here starts the actual work to be performed for the package under test;
+      # any command which exits with a non-zero exit code causes the build to fail.
+       
+      ;;
+      # EOF
+     stack)
+       stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
+       ;;
+     esac
+
 script:
- - if [ -f configure.ac ]; then autoreconf -i; fi
- - cabal configure --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
- - cabal build   # this builds all libraries and executables (including tests/benchmarks)
- - cabal test
- - cabal check
- - cabal sdist   # tests that a source-distribution can be generated
+- |
+  case "$BUILD" in
+    cabal)
+      if [ -f configure.ac ]; then autoreconf -i; fi
+      cabal configure --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
+      cabal build   # this builds all libraries and executables (including tests/benchmarks)
+      cabal test
+      cabal check
+      cabal sdist   # tests that a source-distribution can be generated
 
-# Check that the resulting source distribution can be built & installed.
-# If there are no other `.tar.gz` files in `dist`, this can be even simpler:
-# `cabal install --force-reinstalls dist/*-*.tar.gz`
- - SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
-   (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+      # Check that the resulting source distribution can be built & installed.
+      # If there are no other `.tar.gz` files in `dist`, this can be even simpler:
+      # `cabal install --force-reinstalls dist/*-*.tar.gz`
+      SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz &&
+          (cd dist && cabal install --force-reinstalls "$SRC_TGZ")
+      ;;
+    stack)
+      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
+      ;;
+  esac
 
-# EOF
+
