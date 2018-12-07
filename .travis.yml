@@ -16,22 +16,22 @@ before_cache:
 matrix:
   include:
     - env: BUILD=cabal CABALVER=1.22 GHCVER=7.10.3
-      compiler: ": #GHC 7.10.3"
+      compiler: "ghc-7.10.3"
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3], sources: [hvr-ghc]}}
     - env: BUILD=cabal CABALVER=1.24 GHCVER=8.0.1
-      compiler: ": #GHC 8.0.1"
+      compiler: "GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1], sources: [hvr-ghc]}}
     - env: BUILD=cabal CABALVER=1.24 GHCVER=8.2.2
       compiler: "ghc-8.2.2"
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-1.24,ghc-8.2.2], sources: [hvr-ghc]}}
-    - env: BUILD=cabal CABALVER=1.24 GHCVER=8.4.1
-      compiler: "ghc-8.4.1"
-      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-8.4.1], sources: [hvr-ghc]}}
+    - env: BUILD=cabal CABALVER=1.24 GHCVER=8.4.4
+      compiler: "ghc-8.4.4"
+      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-8.4.4], sources: [hvr-ghc]}}
     - env: BUILD=stack ARGS=""
-      compiler: ": #stack default"
+      compiler: "stack default"
       addons: {apt: {packages: [libgmp-dev]}}
     - env: BUILD=stack ARGS="--resolver nightly"
-      compiler: ": #stack nightly"
+      compiler: "stack nightly"
       addons: {apt: {packages: [libgmp-dev]}}
 
   allow_failures:
@@ -45,6 +45,7 @@ before_install:
       export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
       ;;
     stack)
+      unset CC
       export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
       mkdir -p ~/.local/bin
       if [ `uname` = "Darwin" ]
