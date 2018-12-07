@@ -12,7 +12,7 @@ cache:
 before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index.tar
-
+ 
 matrix:
   include:
     - env: BUILD=cabal CABALVER=1.22 GHCVER=7.10.3
