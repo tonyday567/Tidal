@@ -90,7 +90,8 @@ script:
 - |
   case "$BUILD" in
     cabal)
-      cabal build --enable-tests
+      cabal build
+      cabal test
       ;;
     stack)
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
