@@ -133,7 +133,7 @@ script:
       cabal new-build -w ${HC} --disable-tests --disable-benchmarks all
 
       # build & run tests, build benchmarks
-      cabal new-build -w ${HC} ${TEST} ${BENCH} all
+      cabal new-build -w ${HC} --enable-tests ${BENCH} all
       if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} ${BENCH} all; fi
 
       # cabal check

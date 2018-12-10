@@ -20,7 +20,7 @@ run =
   describe "Sound.Tidal.Pattern" $ do
     describe "eventWhole" $ do
       it "returns the first element of a tuple inside the first element of a tuple" $ do
-        property $ (Arc 1 2) === eventWhole (Event (Arc 1 2) (Arc 3 4) (5 :: Int))
+        property $ (Arc 0 2) === eventWhole (Event (Arc 1 2) (Arc 3 4) (5 :: Int))
 
     describe "eventPart" $ do
       it "returns the second element of a tuple inside the first element of a tuple" $ do
