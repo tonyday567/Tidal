@@ -89,7 +89,7 @@ install:
 - |
   case "$BUILD" in
     cabal)
-      cabal new-install --only-dependencies --enable-tests
+      cabal new-install --only-dependencies
       ;;
     cabal-old)
       cabal install --only-dependencies --enable-tests
