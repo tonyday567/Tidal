@@ -79,7 +79,7 @@ install:
 - |
   case "$BUILD" in
     cabal)
-      cabal configure --only-dependencies --enable-tests
+      cabal install --only-dependencies --enable-tests
       ;;
     stack)
       stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
