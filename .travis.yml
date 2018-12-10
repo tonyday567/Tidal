@@ -56,8 +56,8 @@ before_install:
     cabal)
       unset CC
       export PATH=/opt/ghc/bin:/opt/ghc-ppa-tools/bin:$PATH
+      cabal new-update
       cabal --version
-      cabal update -v
       ;;
     stack)
       PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
@@ -79,7 +79,7 @@ install:
 - |
   case "$BUILD" in
     cabal)
-      cabal install --only-dependencies --enable-tests
+      cabal new-build --only-dependencies --enable-tests
       ;;
     stack)
       stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
@@ -90,9 +90,7 @@ script:
 - |
   case "$BUILD" in
     cabal)
-      cabal configure --enable-tests -v2
-      cabal build
-      cabal test
+      cabal new-build --enable-tests
       ;;
     stack)
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
