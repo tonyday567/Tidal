@@ -79,7 +79,7 @@ install:
 - |
   case "$BUILD" in
     cabal)
-      cabal new-configure --only-dependencies --enable-tests
+      cabal configure --only-dependencies --enable-tests
       ;;
     stack)
       stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
@@ -90,7 +90,7 @@ script:
 - |
   case "$BUILD" in
     cabal)
-      cabal new-build --enable-tests
+      cabal build --enable-tests
       ;;
     stack)
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
