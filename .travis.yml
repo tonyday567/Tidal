@@ -71,6 +71,7 @@ script:
       ;;
     cabal-v1)
       cabal v1-update
+      cabal v1-configure
       cabal v1-build
       cabal v1-test --enable-test
       ;;
