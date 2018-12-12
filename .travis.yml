@@ -16,13 +16,9 @@ cabal: "2.4"
 
 matrix:
   include:
-    - env: BUILD=cabal-v1 GHCVER=8.6.3
-      ghc: "8.6.3"
     - env: BUILD=cabal GHCVER=8.6.3
       ghc: "8.6.3"
     - env: BUILD=cabal GHCVER=8.4.4
-      ghc: "8.4.4"
-    - env: BUILD=cabal-v1 GHCVER=8.4.4
       ghc: "8.4.4"
     - env: BUILD=cabal GHCVER=8.2.2
       ghc: "8.2.2"
@@ -40,20 +36,16 @@ matrix:
   allow_failures:
     - env: BUILD=stack-wall ARGS="--resolver lts-12.22 --system-ghc"
     - env: BUILD=stack ARGS="--resolver nightly --system-ghc"
-    - env: BUILD=cabal-v1 GHCVER=8.6.3
-    - env: BUILD=cabal-v1 GHCVER=8.4.4
 
 install:
 - |
   case "$BUILD" in
-    cabal|cabal-v1)
+    cabal)
       cabal --version
       ghc --version
       ;;
     stack|stack-wall)
       ghc --version
-      mkdir -p ~/.local/bin
-      PATH=$HOME/.local/bin:$PATH
       if [ `uname` = "Darwin" ]
       then
         travis_retry curl --insecure -L https://get.haskellstack.org/stable/osx-x86_64.tar.gz | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
@@ -71,18 +63,12 @@ script:
       cabal v2-build
       cabal v2-test --enable-test
       ;;
-    cabal-v1)
-      cabal v1-update
-      cabal v1-build
-      cabal v1-test
-      ;;
     stack)
-      stack --no-terminal $ARGS test --bench --only-dependencies
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
       ;;
     stack-wall)
       # not sure whether passing -Werror etc with -only-dependencies was benign or not, hence separate $BUILD for stack-wall
-      stack --no-terminal $ARGS test --bench --only-dependencies
-      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps --ghc-options -Werror --ghc-options -Wall --ghc-options -Wcompat --ghc-options -Wincomplete-record-updates --ghc-options -Wincomplete-uni-patterns --ghc-options -Wredundant-constraints
+      stack --no-terminal $ARGS build --bench --no-run-benchmarks --haddock --no-haddock-deps --ghc-options -Werror --ghc-options -Wall --ghc-options -Wcompat --ghc-options -Wincomplete-record-updates --ghc-options -Wincomplete-uni-patterns --ghc-options -Wredundant-constraints
+      stack --no-terminal $ARGS test
       ;;
   esac
