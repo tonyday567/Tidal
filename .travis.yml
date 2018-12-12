@@ -1,7 +1,3 @@
-# cabal methods based on https://github.com/haskell-CI/haskell-ci
-# run with: stack runghc -- ../haskell-ci/make_travis_yml_2.hs tidal.cabal > .travis-cabal.yml
-# stack methods based on https://raw.githubusercontent.com/commercialhaskell/stack/stable/doc/travis-complex.yml
-
 language: haskell
 dist: trusty
 
@@ -16,26 +12,28 @@ cabal: "2.4"
 
 matrix:
   include:
-    - env: BUILD=cabal GHCVER=8.6.3
+    - env: BUILD=cabal
       ghc: "8.6.3"
-    - env: BUILD=cabal GHCVER=8.4.4
+    - env: BUILD=cabal
       ghc: "8.4.4"
-    - env: BUILD=cabal GHCVER=8.2.2
+    - env: BUILD=cabal
       ghc: "8.2.2"
-    - env: BUILD=cabal GHCVER=8.0.2
+    - env: BUILD=cabal
       ghc: "8.0.2"
-    - env: BUILD=cabal GHCVER=7.10.3
+    - env: BUILD=cabal
       ghc: "7.10.3"
+      # --system-ghc is mostly used to take advantage of language: haskell and save build time. If the system-ghc and the nightly ghc become different, stack will download the right ghc
     - env: BUILD=stack ARGS="--resolver lts-12.22 --system-ghc"
       ghc: "8.4.4"
-    - env: BUILD=stack ARGS="--resolver lts-12.22 --system-ghc  --ghc-options=-Werror --ghc-options=-Wcompat --ghc-options=-Wincomplete-record-updates --ghc-options=-Wincomplete-uni-patterns --ghc-options=-Wredundant-constraints"
+      # a -Werror build for (eventual) rigor that is allowed to fail
+    - env: BUILD=stack ARGS="--resolver lts-12.22 --system-ghc  --ghc-options -Werror --ghc-options -Wcompat --ghc-options -Wincomplete-record-updates --ghc-options -Wincomplete-uni-patterns --ghc-options -Wredundant-constraints"
       ghc: "8.4.4"
     - env: BUILD=stack ARGS="--resolver nightly --system-ghc"
       ghc: "8.6.2"
 
   allow_failures:
     - env: BUILD=stack ARGS="--resolver nightly --system-ghc"
-    - env: BUILD=stack ARGS="--resolver lts-12.22 --system-ghc  --ghc-options=-Werror --ghc-options=-Wcompat --ghc-options=-Wincomplete-record-updates --ghc-options=-Wincomplete-uni-patterns --ghc-options=-Wredundant-constraints"
+    - env: BUILD=stack ARGS="--resolver lts-12.22 --system-ghc  --ghc-options -Werror --ghc-options -Wcompat --ghc-options -Wincomplete-record-updates --ghc-options -Wincomplete-uni-patterns --ghc-options -Wredundant-constraints"
 
 install:
 - |
