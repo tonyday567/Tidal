@@ -22,6 +22,8 @@ matrix:
       ghc: "8.6.3"
     - env: BUILD=cabal GHCVER=8.4.4
       ghc: "8.4.4"
+    - env: BUILD=cabal-v1 GHCVER=8.4.4
+      ghc: "8.4.4"
     - env: BUILD=cabal GHCVER=8.2.2
       ghc: "8.2.2"
     - env: BUILD=cabal GHCVER=8.0.2
@@ -38,8 +40,8 @@ matrix:
   allow_failures:
     - env: BUILD=stack-wall ARGS="--resolver lts-12.22 --system-ghc"
     - env: BUILD=stack ARGS="--resolver nightly --system-ghc"
-    - env: BUILD=cabal GHCVER=8.6.3
     - env: BUILD=cabal-v1 GHCVER=8.6.3
+    - env: BUILD=cabal-v1 GHCVER=8.4.4
 
 install:
 - |
@@ -71,9 +73,8 @@ script:
       ;;
     cabal-v1)
       cabal v1-update
-      cabal v1-configure
       cabal v1-build
-      cabal v1-test --enable-test
+      cabal v1-test
       ;;
     stack)
       stack --no-terminal $ARGS test --bench --only-dependencies
