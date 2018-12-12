@@ -16,7 +16,7 @@ cabal: "2.4"
 
 matrix:
   include:
-    - env: BUILD=cabal-old GHCVER=8.6.3
+    - env: BUILD=cabal-v1 GHCVER=8.6.3
       ghc: "8.6.3"
     - env: BUILD=cabal GHCVER=8.6.3
       ghc: "8.6.3"
@@ -30,27 +30,29 @@ matrix:
       ghc: "7.10.3"
     - env: BUILD=stack ARGS="--resolver lts-12.22 --system-ghc"
       ghc: "8.4.4"
-      addons: {apt: {packages: [libgmp-dev]}}
     - env: BUILD=stack ARGS="--resolver nightly --system-ghc"
-      ghc: "8.6.3"
-      addons: {apt: {packages: [libgmp-dev]}}
+      ghc: "8.6.2"
 
   allow_failures:
     - env: BUILD=stack ARGS="--resolver nightly --system-ghc"
     - env: BUILD=cabal GHCVER=8.6.3
+    - env: BUILD=cabal-v1 GHCVER=8.6.3
 
 install:
-- cabal --version
-- ghc --version
 - |
   case "$BUILD" in
     cabal)
+      cabal --version
+      ghc --version
       ;;
-    cabal-old)
+    cabal-v1)
+      cabal --version
+      ghc --version
       ;;
     stack)
-      PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin:/opt/alex/$ALEXVER/bin:/opt/happy/$HAPPYVER/bin:$HOME/.cabal/bin:$PATH
+      ghc --version
       mkdir -p ~/.local/bin
+      PATH=$HOME/.local/bin:$PATH
       if [ `uname` = "Darwin" ]
       then
         travis_retry curl --insecure -L https://get.haskellstack.org/stable/osx-x86_64.tar.gz | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
@@ -68,10 +70,10 @@ script:
       cabal v2-build
       cabal v2-test --enable-test
       ;;
-    cabal-old)
-      cabal update
-      cabal build
-      cabal test
+    cabal-v1)
+      cabal v1-update
+      cabal v1-build
+      cabal v1-test --enable-test
       ;;
     stack)
       stack --no-terminal $ARGS test --bench --only-dependencies
