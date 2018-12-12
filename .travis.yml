@@ -79,8 +79,8 @@ script:
       stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
       ;;
     stack-wall)
-      # not sure whether passing -Wall with -only-dependencies was benign or not, hence separate $BUILD for stack-wall
+      # not sure whether passing -Werror etc with -only-dependencies was benign or not, hence separate $BUILD for stack-wall
       stack --no-terminal $ARGS test --bench --only-dependencies
-      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps --ghc-options=-Wall
+      stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps --ghc-options -Werror --ghc-options -Wall --ghc-options -Wcompat --ghc-options -Wincomplete-record-updates --ghc-options -Wincomplete-uni-patterns --ghc-options -Wredundant-constraints
       ;;
   esac
