@@ -7,7 +7,7 @@
 ;; Homepage: https://github.com/tidalcycles/Tidal
 ;; Version: 0.0.1
 ;; Keywords: tools
-;; Package-Requires: ((haskell-mode "16") (emacs "25.1"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@
 (require 'thingatpt)
 (require 'find-lisp)
 (require 'pulse)
-(require 'haskell-mode)
 (require 'subr-x)
 
 (defvar tidal-buffer
@@ -379,7 +378,6 @@ Two functions will be created, `tidal-run-NAME' and `tidal-stop-NAME'"
   (set (make-local-variable 'paragraph-start) "\f\\|[ \t]*$")
   (set (make-local-variable 'paragraph-separate) "[ \t\f]*$")
   (setq tidal-literate-p t)
-  (setq haskell-literate 'bird)
   (turn-on-font-lock))
 
 ;;;###autoload
@@ -388,7 +386,7 @@ Two functions will be created, `tidal-run-NAME' and `tidal-stop-NAME'"
 ;;;###autoload
 (define-derived-mode
   tidal-mode
-  haskell-mode
+  prog-mode
   "Haskell Tidal"
   "Major mode for interacting with an inferior haskell process."
   (set (make-local-variable 'paragraph-start) "\f\\|[ \t]*$")
