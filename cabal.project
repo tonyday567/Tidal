@@ -1,1 +1,7 @@
 packages: ./ tidal-parse tidal-listener tidal-link
+
+allow-newer:
+    hint:ghc,
+    tidal-parse:containers,
+    tidal-parse:text,
+    haskellish:template-haskell
